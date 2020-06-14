@@ -1,0 +1,423 @@
+trainData <- read.csv("trainset.csv")
+View(trainData)
+testData <- read.csv("testset.csv")
+View(testData)
+
+install.packages("party")
+library(party)
+
+formula_1 <- Subscribed ~ age + job + marital + education + housing + loan + contact + month + day_of_week + duration + campaign + pdays + poutcome + nr.employed
+tree_1 <- ctree(formula_1, data=trainData)
+plot(tree_1)
+
+#test tree
+tree_1b <- ctree(formula_1, data=trainData)
+plot(tree_1b)
+
+#test Train data
+testPredict_1a <- predict(tree_1, trainData)
+table(testPredict_1a,trainData$Subscribed)
+
+#test Test data
+testPredict_1b <- predict(tree_1, newdata = testData)
+table(testPredict_1b,testData$Subscribed)
+
+#let's try with applying the nearest neighbour to the missing vaues in poutcome
+#change nonexistent values in Poutcome to failure
+trainData$poutcome [trainData$poutcome == 'nonexistent'] <- 'failure'
+View(trainData)
+
+
+tree_7 <- ctree(formula_1, data=trainData)
+plot(tree_7)
+
+#test tree
+tree_7b <- ctree(formula_1, data=testData)
+plot(tree_7b)
+
+#test Train data
+testPredict_7a <- predict(tree_7, trainData)
+table(testPredict_7a,trainData$Subscribed)
+
+#test Test data
+
+testPredict_7b <- predict(tree_7, newdata = testData)
+table(testPredict_7b,testData$Subscribed)
+
+
+
+#Now we're going to replace the nonexistent values with NA in the test and train data to get rid of unknown and nonexistent data
+#Creating Tree_2 With new training data
+
+
+trainData[]
+trainData[ trainData == "unknown" ] <- NA
+
+trainData[]
+trainData[ trainData == "nonexistent" ] <- NA
+
+testData[]
+testData[ testData == "unknown" ] <- NA
+
+testData[]
+testData[ testData == "nonexistent"] <- NA
+
+formula_x <- Subscribed ~  contact + month + duration + nr.employed
+tree_x <- ctree(formula_x, data=trainData)
+plot(tree_x)
+testPredict_x <- predict(tree_x, trainData)
+table(testPredict_x,trainData$Subscribed)
+
+#Now that the data has replaced the non-existent values with na, we can create the second tree to reflect upon the changes. Note that the new tree wont change much
+install.packages("party")
+library(party)
+
+tree_2 <- ctree(formula_1, data=trainData)
+plot(tree_2)
+
+
+#test tree
+tree_2b <- ctree(formula_1, data=testData)
+plot(tree_2b)
+#test Train data
+testPredict_2a <- predict(tree_2, trainData)
+table(testPredict_2a,trainData$Subscribed)
+
+#test Test data
+
+testPredict_2b <- predict(tree_2, newdata = testData)
+table(testPredict_2b,testData$Subscribed)
+
+#Tree 2 is just as bad.
+
+#Tree 3 is the next step of focus. We will be creating this tree off the Information gain
+#the previous tree is still too messy. We will install RWeka to get the Information gains, to create a better tree
+#with the values with the most IG.
+
+install.packages("RWeka")
+library(RWeka)
+ig<-InfoGainAttributeEval(formula_2,trainData)
+View(ig)
+
+#View(ig showed us the information gains of each, they are all similar, so it is hard to see which we should not use. )
+#so, we will use a bar plot to get a better visual of the attributes with the best information gain
+
+barplot(ig)
+
+#it looks like ag,contact, month, duration, pdays nr employed and outcome have significantly highly higher
+#information gain than the rest which are very low.  We will now look at the IG for those attributes
+# and make sure they are  higher,  and then rebuild our tree using them.
+
+formula_2 <-Subscribed ~ age+contact+month+duration+pdays+poutcome+nr.employed
+tree_3 <- ctree(formula_2,data=trainData)
+plot(tree_3)
+
+#test tree
+tree_3b <- ctree(formula_2,data=testData)
+plot(tree_3b)
+
+#test Train data
+testPredict_3a <- predict(tree_3, trainData)
+table(testPredict_3a,trainData$Subscribed)
+
+#test Test data
+testPredict_3b <- predict(tree_3, newdata = testData)
+table(testPredict_3b,testData$Subscribed)
+
+#Tree 3 is created using the values from the information gain
+
+#tree 4
+#j48 picks the best attributes based on IG for you. Therefore, we will do a j48 tree and see if it returns better
+#results that our 3rd tree.
+
+J48Tree <- J48(formula_2, data=trainData)
+plot(J48Tree)
+
+#test Train data
+testPredict_4a <- predict(J48Tree, trainData)
+table(testPredict_4a,trainData$Subscribed)
+
+#test Test data
+test_predict4b <- predict(J48Tree,newdata = testData)
+table(test_predict4b, testData$Subscribed)
+
+
+#Tree 5:Top 3 information gain attributes: month + duration + nr.employed
+formula_3 <- Subscribed ~ month + duration + nr.employed
+tree_5<- ctree(formula_3, data=trainData)
+plot(tree_5)
+
+#test tree
+tree_5b<- ctree(formula_3, data=testData)
+plot(tree_5b)
+
+#test Train data
+testPredict_5a <- predict(tree_5, trainData)
+table(testPredict_5a,trainData$Subscribed)
+
+#test Test data
+testPredict_5b <- predict(tree_5, newdata = testData)
+table(testPredict_5b,testData$Subscribed)
+
+# Tree 6 code:Formula 4- top 2 information gain:month + nr.employed
+formula_4 <- Subscribed ~ month + nr.employed
+tree_6<- ctree (formula_4, data=trainData)
+plot(tree_6)
+
+#test tree 
+tree_6b<- ctree (formula_4, data=testData)
+plot(tree_6b)
+
+#test Train data
+testPredict_6a <- predict(tree_6, trainData)
+table(testPredict_6a,trainData$Subscribed)
+
+#test Test data
+testPredict_6b <- predict(tree_6, newdata = testData)
+table(testPredict_6b,testData$Subscribed)
+
+
+#Code: Deletings Data Values will Affect Our Data
+
+nrows <- nrow(trainData)
+ncomplete <-sum(complete.cases(trainData))
+ncomplete
+ncomplete/nrows
+#This equals 0.04 = 96% of data will be affected
+
+nrowtest <- nrow(testData)
+ncompletetest <-sum(complete.cases(testData))
+ncompletetest
+ncompletetest/nrows
+#This equals 0.1369 = 86% of data will be affected
+
+
+
+
+
+#Formula 5: all except nr.employed
+
+formula_5 <- Subscribed ~ age + job + marital + education + housing + loan + contact + month + day_of_week + duration + campaign + pdays + poutcome 
+tree_8 <- ctree(formula_5, data=trainData)
+plot(tree_8)
+
+#test tree
+tree_8b <- ctree(formula_5, data=testData)
+plot(tree_8b)
+
+#test Train data
+testPredict_8a <- predict(tree_8, trainData)
+table(testPredict_8a,trainData$Subscribed)
+
+#test Test data
+testPredict_8b <- predict(tree_8, newdata = testData)
+table(testPredict_8b,testData$Subscribed)
+
+#let's try without month
+
+formula_6 <- Subscribed ~ age + job + marital  + nr.employed+ education + housing + loan + contact +  day_of_week + duration + campaign + pdays + poutcome
+tree_9 <- ctree(formula_6, data=trainData)
+plot(tree_9)
+
+#test tree
+tree_9b <- ctree(formula_6, data=testData)
+plot(tree_9b)
+
+#test Train data
+testPredict_9a <- predict(tree_9, trainData)
+table(testPredict_9a,trainData$Subscribed)
+
+#test Test data
+testPredict_9b <- predict(tree_9, newdata = testData)
+table(testPredict_9b,testData$Subscribed)
+
+#Formula 7: all except month and nremployed. 
+
+formula_7 <- Subscribed ~ age + job + marital + education + housing + loan + contact +  day_of_week + duration + campaign + pdays + poutcome
+tree_10 <- ctree(formula_7, data=trainData)
+plot(tree_10)
+
+#test tree
+tree_10b <- ctree(formula_7, data=testData)
+plot(tree_10b)
+
+#test Train data
+testPredict_10a <- predict(tree_10, trainData)
+table(testPredict_10a,trainData$Subscribed)
+
+#test Test data
+testPredict_10b <- predict(tree_10, newdata = testData)
+table(testPredict_10b,testData$Subscribed)
+
+# Tree 11: Formula 8: all except Poutcome
+#let's try without month
+
+formula_8 <- Subscribed ~ age + job + marital  + nr.employed+ education + housing + loan + contact +  day_of_week + duration + campaign + pdays + month
+tree_11 <- ctree(formula_8, data=trainData)
+plot(tree_11)
+
+#testtree
+tree_11b <- ctree(formula_8, data=testData)
+plot(tree_11b)
+
+#train data performance for tree 11:
+testPredict_11a <- predict(tree_11, trainData)
+table(testPredict_11a,trainData$Subscribed)
+
+#test data performance for tree 11:
+testPredict_11b <- predict(tree_11, newdata = testData)
+table(testPredict_11b,testData$Subscribed)
+
+#Tree 12 : Formula 9: all except Poutcome+month
+formula_9 <- Subscribed ~ age + job + marital  + nr.employed+ education + housing + loan + contact +  day_of_week + duration + campaign + pdays 
+tree_12 <- ctree(formula_9, data=trainData)
+plot(tree_12)
+
+#test tree
+tree_12b <- ctree(formula_9, data=testData)
+plot(tree_12b)
+
+#train data performance for tree 12:
+testPredict_12a <- predict(tree_12, data= trainData)
+table(testPredict_12a,trainData$Subscribed)
+
+
+#test data performance for tree 12:
+testPredict_12b <- predict(tree_12, newdata = testData)
+table(testPredict_12b,testData$Subscribed)
+
+#Tree 13: Formula 10: all except Poutcome+month+nr.employed
+formula_10 <- Subscribed ~ age + job + marital  + education + housing + loan + contact +  day_of_week + duration + campaign + pdays 
+tree_13 <- ctree(formula_10, data=trainData)
+plot(tree_13)
+
+#test tree
+tree_13b <- ctree(formula_10, data=testData)
+plot(tree_13b)
+
+#train data performance for tree 13:
+testPredict_13a <- predict(tree_13, data= trainData)
+table(testPredict_13a,trainData$Subscribed)
+
+
+#test data performance for tree 13:
+testPredict_13b <- predict(tree_13, newdata = testData)
+table(testPredict_13b,testData$Subscribed)
+
+
+#Tree 14: Formula 11: jobs+Pdays
+formula_11 <- Subscribed ~job + pdays 
+tree_14 <- ctree(formula_11, data=trainData)
+plot(tree_14)
+
+#test tree
+tree_14b <- ctree(formula_11, data=testData)
+plot(tree_14b)
+
+#train data performance for tree 14:
+testPredict_14a <- predict(tree_14, data= trainData)
+table(testPredict_14a,trainData$Subscribed)
+
+
+#test data performance for tree 14:
+testPredict_14b <- predict(tree_14, newdata = testData)
+table(testPredict_14b,testData$Subscribed)
+
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+## UNDERSAMPLED DATA NOW ON
+
+utData <- read.csv("undersampledtrainset.csv")
+View(utData)
+
+#let's try with applying the nearest neighbour to the missing vaues in poutcome
+#change nonexistent values in Poutcome to failure
+utData$poutcome [utData$poutcome == 'nonexistent'] <- 'failure'
+View(utData)
+
+utData[]
+utData[ utData == "unknown" ] <- NA
+
+utData[]
+utData[ utData == "nonexistent" ] <- NA
+
+# Tree 15 will be formula 1, same as formula 15
+
+tree_15 <- ctree(formula_1, data=utData)
+plot(tree_15)
+
+#test Train data
+testPredict_15a <- predict(tree_15, utData)
+table(testPredict_15a,utData$Subscribed)
+
+#test Test data
+#testPredict_15b <- predict(tree_15, newdata = testData)
+#table(testPredict_15b,testData$Subscribed)
+# does not work
+
+
+
+# Tree 16 code: tree 6 but on underrepresented data
+
+tree_16<- ctree (formula_4, data=utData)
+plot(tree_16)
+
+#test Train data
+testPredict_16a <- predict(tree_16, utData)
+table(testPredict_16a,utData$Subscribed)
+
+
+#let's try formula 6 on the undersampled data: no month
+
+
+tree_17 <- ctree(formula_6, data=utData)
+plot(tree_17)
+
+#test Train data
+testPredict_17a <- predict(tree_17, utData)
+table(testPredict_17a,utData$Subscribed)
+
+
+#Formula 7 on undersampled data (no month, no nr. employed)
+tree_18 <- ctree(formula_7, data=utData)
+plot(tree_18)
+
+#test Train data
+testPredict_18a <- predict(tree_18, utData)
+table(testPredict_18a,utData$Subscribed)
+
+
+#Tree 19: undersampled tree using Formula 10: all except poutcome+month+nr.employed		
+tree_19 <- ctree(formula_10, data=utData)
+plot(tree_19)
+
+
+#train data performance for tree 13:
+testPredict_19a <- predict(tree_19, data= utData)
+table(testPredict_19a,utData$Subscribed)
+
+
+
+
+
+
+
+
+
